@@ -8,10 +8,34 @@
 #include "Intersection.h"
 #include "Vehicle.h"
 
+/* Implementation of class "WaitingVehicles" */
+
+int WaitingVehicles::getSize()
+{
+    return _vehicles.size();
+}
+
+void WaitingVehicles::pushBack(std::shared_ptr<Vehicle> vehicle, std::promise<void> &&promise)
+{
+    _vehicles.push_back(vehicle);
+    _promises.push_back(std::move(promise));
+}
+
+void WaitingVehicles::permitEntryToFirstInQueue()
+{
+    std::cout << "First vehicle permitted through: " << _vehicles.front()->getID() << "\n";
+    auto grant_permission  = std::move(*(_promises.begin()));
+    _vehicles.erase(_vehicles.begin());
+    _promises.erase(_promises.begin());
+    grant_permission.set_value();
+}
+
+/* Implementation of class "Intersection" */
 
 Intersection::Intersection()
 {
     _type = ObjectType::objectIntersection;
+    _isBlocked = false;
 }
 
 void Intersection::addStreet(std::shared_ptr<Street> street)
@@ -32,4 +56,62 @@ std::vector<std::shared_ptr<Street>> Intersection::queryStreets(std::shared_ptr<
     }
 
     return outgoings;
+}
+
+// adds a new vehicle to the queue and returns once the vehicle is allowed to enter
+void Intersection::addVehicleToQueue(std::shared_ptr<Vehicle> vehicle)
+{
+    std::cout << "Intersection #" << _id << "::addVehicleToQueue: thread id = " << std::this_thread::get_id() << std::endl;
+
+    std::promise<void> grant_permission;
+    std::future<void> permission_granted = grant_permission.get_future();
+    
+    _waitingVehicles.pushBack(vehicle, std::move(grant_permission));
+    permission_granted.wait();
+    
+    std::cout << "Intersection #" << _id << ": Vehicle #" << vehicle->getID() << " is granted entry." << std::endl;
+}
+
+void Intersection::vehicleHasLeft(std::shared_ptr<Vehicle> vehicle)
+{
+    //std::cout << "Intersection #" << _id << ": Vehicle #" << vehicle->getID() << " has left." << std::endl;
+
+    // unblock queue processing
+    this->setIsBlocked(false);
+}
+
+void Intersection::setIsBlocked(bool isBlocked)
+{
+    _isBlocked = isBlocked;
+    //std::cout << "Intersection #" << _id << " isBlocked=" << isBlocked << std::endl;
+}
+
+// virtual function which is executed in a thread
+void Intersection::simulate() // using threads + promises/futures + exceptions
+{
+    // launch vehicle queue processing in a thread
+    threads.emplace_back(std::thread(&Intersection::processVehicleQueue, this));
+}
+
+void Intersection::processVehicleQueue()
+{
+    // print id of the current thread
+    //std::cout << "Intersection #" << _id << "::processVehicleQueue: thread id = " << std::this_thread::get_id() << std::endl;
+
+    // continuously process the vehicle queue
+    while (true)
+    {
+        // sleep at every iteration to reduce CPU usage
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+
+        // only proceed when at least one vehicle is waiting in the queue
+        if (_waitingVehicles.getSize() > 0 && !_isBlocked)
+        {
+            // set intersection to "blocked" to prevent other vehicles from entering
+            this->setIsBlocked(true);
+
+            // permit entry to first vehicle in the queue (FIFO)
+            _waitingVehicles.permitEntryToFirstInQueue();
+        }
+    }
 }

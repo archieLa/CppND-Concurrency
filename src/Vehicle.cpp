@@ -73,6 +73,9 @@ void Vehicle::drive()
             // check wether halting position in front of destination has been reached
             if (completion >= 0.9 && !hasEnteredIntersection)
             {
+                std::future<void> ready_to_go = 
+                std::async(&Intersection::addVehicleToQueue, _currDestination, get_shared_this()); 
+                ready_to_go.wait();
                 // slow down and set intersection flag
                 _speed /= 10.0;
                 hasEnteredIntersection = true;
@@ -101,6 +104,9 @@ void Vehicle::drive()
                 // pick the one intersection at which the vehicle is currently not
                 std::shared_ptr<Intersection> nextIntersection = nextStreet->getInIntersection()->getID() == _currDestination->getID() ? nextStreet->getOutIntersection() : nextStreet->getInIntersection(); 
 
+                // send signal to intersection that vehicle has left the intersection
+                _currDestination->vehicleHasLeft(get_shared_this());
+                
                 // assign new street and destination
                 this->setCurrentDestination(nextIntersection);
                 this->setCurrentStreet(nextStreet);
