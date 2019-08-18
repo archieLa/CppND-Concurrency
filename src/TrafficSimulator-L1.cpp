@@ -57,6 +57,12 @@ void createTrafficObjects(std::vector<std::shared_ptr<Street>> &streets, std::ve
     streets.at(6)->setOutIntersection(intersections.at(3));
 
     // add vehicles to streets
+    if (nVehicles > nStreets)
+    {
+        std::cout << "Number of vehicle truncated to number of streets\n";
+        nVehicles = nStreets;
+    }
+
     for (size_t nv = 0; nv < nVehicles; nv++)
     {
         vehicles.push_back(std::make_shared<Vehicle>());
