@@ -30,9 +30,10 @@ void Vehicle::simulate()
 // virtual function which is executed in a thread
 void Vehicle::drive()
 {
-    // print id of the current thread
+    std::unique_lock<std::mutex> uniq_lock(TrafficObject::s_cout_mutex);
     std::cout << "Vehicle #" << _id << "::drive: thread id = " << std::this_thread::get_id() << std::endl;
-
+    uniq_lock.unlock();
+    
     // initalize variables
     bool hasEnteredIntersection = false;
     double cycleDuration = 1; // duration of a single simulation cycle in ms

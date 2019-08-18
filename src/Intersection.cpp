@@ -12,18 +12,20 @@
 
 int WaitingVehicles::getSize()
 {
+    std::lock_guard<std::mutex> my_lock(mut_);
     return _vehicles.size();
 }
 
 void WaitingVehicles::pushBack(std::shared_ptr<Vehicle> vehicle, std::promise<void> &&promise)
-{
+{  
+    std::lock_guard<std::mutex> my_lock(mut_);
     _vehicles.push_back(vehicle);
     _promises.push_back(std::move(promise));
 }
 
 void WaitingVehicles::permitEntryToFirstInQueue()
 {
-    std::cout << "First vehicle permitted through: " << _vehicles.front()->getID() << "\n";
+    std::lock_guard<std::mutex> my_lock(mut_);
     auto grant_permission  = std::move(*(_promises.begin()));
     _vehicles.erase(_vehicles.begin());
     _promises.erase(_promises.begin());
@@ -61,7 +63,9 @@ std::vector<std::shared_ptr<Street>> Intersection::queryStreets(std::shared_ptr<
 // adds a new vehicle to the queue and returns once the vehicle is allowed to enter
 void Intersection::addVehicleToQueue(std::shared_ptr<Vehicle> vehicle)
 {
+    std::unique_lock<std::mutex> uniq_lock(TrafficObject::s_cout_mutex);
     std::cout << "Intersection #" << _id << "::addVehicleToQueue: thread id = " << std::this_thread::get_id() << std::endl;
+    uniq_lock.unlock();
 
     std::promise<void> grant_permission;
     std::future<void> permission_granted = grant_permission.get_future();
@@ -69,7 +73,9 @@ void Intersection::addVehicleToQueue(std::shared_ptr<Vehicle> vehicle)
     _waitingVehicles.pushBack(vehicle, std::move(grant_permission));
     permission_granted.wait();
     
+    uniq_lock.lock();
     std::cout << "Intersection #" << _id << ": Vehicle #" << vehicle->getID() << " is granted entry." << std::endl;
+
 }
 
 void Intersection::vehicleHasLeft(std::shared_ptr<Vehicle> vehicle)

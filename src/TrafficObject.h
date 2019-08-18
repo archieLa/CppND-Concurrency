@@ -3,6 +3,7 @@
 
 #include <vector>
 #include <thread>
+#include <mutex>
 
 enum ObjectType
 {
@@ -27,6 +28,8 @@ public:
 
     // typical behaviour methods
     virtual void simulate(){};
+
+    static std::mutex s_cout_mutex;
 
 protected:
     ObjectType _type;                 // identifies the class type

@@ -2,6 +2,9 @@
 #include <chrono>
 #include "TrafficObject.h"
 
+
+std::mutex TrafficObject::s_cout_mutex;
+
 // init static variable
 int TrafficObject::_idCnt = 0;
 
