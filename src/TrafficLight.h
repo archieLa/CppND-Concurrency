@@ -26,10 +26,10 @@ public:
     {
         // Wait until msgs queue is not empty
         std::unique_lock<std::mutex> myLock(_mutex);
-        _condition.wait(myLock, [this] (){return !_msgs.empty()});
+        _condition.wait(myLock, [this] (){return !_msgs.empty();});
         T msg = std::move(_msgs.back());
         _msgs.pop_back();
-        return T;
+        return msg;
     }
 
 private:

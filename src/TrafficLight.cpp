@@ -17,11 +17,6 @@ void TrafficLight::waitForGreen()
     }
 }
 
-TrafficLightPhase TrafficLight::getCurrentPhase() const 
-{
-    return _currentPhase;
-}
-
 void TrafficLight::simulate()
 {
     threads.emplace_back(std::thread(&TrafficLight::cycleThroughPhases, this));
