@@ -24,16 +24,18 @@ void Vehicle::setCurrentDestination(std::shared_ptr<Intersection> destination)
 
 void Vehicle::simulate()
 {
-    threads.emplace_back(std::thread(&Vehicle::drive,this));
+    // launch drive function in a thread
+    threads.emplace_back(std::thread(&Vehicle::drive, this));
 }
 
 // virtual function which is executed in a thread
 void Vehicle::drive()
 {
-    std::unique_lock<std::mutex> uniq_lock(TrafficObject::s_cout_mutex);
+    // print id of the current thread
+    std::unique_lock<std::mutex> lck(_mtx);
     std::cout << "Vehicle #" << _id << "::drive: thread id = " << std::this_thread::get_id() << std::endl;
-    uniq_lock.unlock();
-    
+    lck.unlock();
+
     // initalize variables
     bool hasEnteredIntersection = false;
     double cycleDuration = 1; // duration of a single simulation cycle in ms
@@ -74,9 +76,12 @@ void Vehicle::drive()
             // check wether halting position in front of destination has been reached
             if (completion >= 0.9 && !hasEnteredIntersection)
             {
-                std::future<void> ready_to_go = 
-                std::async(&Intersection::addVehicleToQueue, _currDestination, get_shared_this()); 
-                ready_to_go.wait();
+                // request entry to the current intersection (using async)
+                auto ftrEntryGranted = std::async(&Intersection::addVehicleToQueue, _currDestination, get_shared_this());
+
+                // wait until entry has been granted
+                ftrEntryGranted.get();
+
                 // slow down and set intersection flag
                 _speed /= 10.0;
                 hasEnteredIntersection = true;
@@ -107,7 +112,7 @@ void Vehicle::drive()
 
                 // send signal to intersection that vehicle has left the intersection
                 _currDestination->vehicleHasLeft(get_shared_this());
-                
+
                 // assign new street and destination
                 this->setCurrentDestination(nextIntersection);
                 this->setCurrentStreet(nextStreet);
